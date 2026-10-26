@@ -7,7 +7,7 @@ has been, and turns the answer into a number they can buy against.
 Built against Elexon BMRS: `FUELHH` metered outturn (`fuelType = WIND`) and
 `WINDFOR` forecasts, for January 2026 delivery.
 
-**Live app:** _(deployment link)_
+**Live app:** https://gridbricks-eight.vercel.app
 
 ---
 
