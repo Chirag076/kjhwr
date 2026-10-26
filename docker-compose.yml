@@ -1,0 +1,32 @@
+# One command to run the whole thing locally.
+#
+#   docker compose up --build   ->  http://localhost:5173
+#
+# The front end proxies /api to the backend container, so the browser talks to
+# a single origin and there is no CORS configuration to get wrong in dev.
+services:
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Reads the committed January 2026 fixtures instead of calling Elexon.
+      # Set to 0 to run against the live API.
+      ELEXON_OFFLINE: "1"
+      DATA_DIR: /data
+      GATE_CLOSURE_HOUR: "9"
+      GATE_CLOSURE_MINUTE: "50"
+    volumes:
+      - ./data:/data:ro
+      - ./backend/windsight:/app/windsight:ro
+
+  web:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_TARGET: http://api:8000
+    depends_on:
+      - api
+    volumes:
+      - ./frontend/src:/app/src:ro

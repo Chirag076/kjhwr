@@ -1,0 +1,15 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.env
+.vercel
+.DS_Store
+
+# Elexon fixtures: regenerate with `make data`
+data/*.json
+
+.vercel
