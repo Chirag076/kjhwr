@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config, domain
@@ -40,6 +40,13 @@ app.add_middleware(
 )
 
 client = ElexonClient()
+
+# Routes live on a router so they can be mounted twice. Hosting platforms
+# differ on whether a service rooted at /api receives "/api/health" or the
+# prefix-stripped "/health": Vercel's docs do not state it either way, and
+# guessing wrong means every endpoint 404s in production while working
+# perfectly in Docker. Mounting at both makes the question moot.
+router = APIRouter()
 
 
 def _window() -> tuple[dt.datetime, dt.datetime]:
@@ -71,7 +78,7 @@ def _all_points() -> list[domain.Point]:
     return points
 
 
-@app.get("/api/health")
+@router.get("/health")
 def health() -> dict:
     return {
         "ok": True,
@@ -84,7 +91,7 @@ def health() -> dict:
     }
 
 
-@app.get("/api/decision/{delivery_day}")
+@router.get("/decision/{delivery_day}")
 def decision(delivery_day: dt.date) -> dict:
     """
     The decision screen for one delivery day.
@@ -163,7 +170,7 @@ def _stats_json(s: domain.ErrorStats) -> dict:
     }
 
 
-@app.get("/api/accuracy")
+@router.get("/accuracy")
 def accuracy(band_width_mw: int = Query(3000, ge=500, le=10000)) -> dict:
     """Month-wide scoring of the forecasts that were actually usable."""
     points = _all_points()
@@ -201,10 +208,17 @@ def accuracy(band_width_mw: int = Query(3000, ge=500, le=10000)) -> dict:
     }
 
 
-@app.get("/api/lead-time")
+@router.get("/lead-time")
 def lead_time() -> dict:
     """Error against how far ahead the forecast was made."""
     start, end = _window()
     actual_hourly = domain.to_hourly(client.actuals(start, end))
     forecasts = client.forecasts(start, end)
     return {"buckets": domain.error_by_lead_time(forecasts, actual_hourly)}
+
+
+# Both mounts serve the same handlers. Local Docker and the documented
+# file-based routing use the first; a platform that strips the prefix uses
+# the second.
+app.include_router(router, prefix="/api")
+app.include_router(router)
